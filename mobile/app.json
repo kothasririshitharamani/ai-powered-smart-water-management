@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "స్మార్ట్ నీటి నిర్వహణ",
+    "slug": "smart-water-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "org.smartwater.farmer"
+    }
+  }
+}

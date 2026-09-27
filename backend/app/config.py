@@ -1,0 +1,26 @@
+import os
+
+
+class Config:
+    SECRET_KEY = os.getenv(
+        "SECRET_KEY", "development-only-change-this-secret-key-before-deployment"
+    )
+    JWT_SECRET_KEY = os.getenv(
+        "JWT_SECRET_KEY", "development-only-change-this-jwt-signing-key-before-deployment"
+    )
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL", "sqlite:///smart_water.db"
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_ACCESS_TOKEN_EXPIRES = 60 * 60
+    WATER_LOW_REMAINING_PERCENT = float(os.getenv("WATER_LOW_REMAINING_PERCENT", "30"))
+    WATER_VERY_LOW_REMAINING_PERCENT = float(
+        os.getenv("WATER_VERY_LOW_REMAINING_PERCENT", "15")
+    )
+    CORS_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:8081,http://127.0.0.1:8081"
+        ).split(",")
+        if origin.strip()
+    ]
