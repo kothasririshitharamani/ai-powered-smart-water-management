@@ -22,10 +22,24 @@ def create_app(config_object=Config):
     from app.api.auth import auth_bp
     from app.api.profile import profile_bp
     from app.api.water import water_bp
+    from app.api.water_requirement import water_requirement_bp
+    from app.api.weather import weather_bp
+    from app.api.scarcity_allocation import scarcity_bp
+    from app.api.crop_efficiency import crop_efficiency_bp
+    from app.api.soil_analysis import soil_analysis_bp
+    from app.api.voice_assistant import voice_assistant_bp
+    from app.api.disaster_preparedness import disaster_preparedness_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(profile_bp, url_prefix="/api/profile")
     app.register_blueprint(water_bp, url_prefix="/api")
+    app.register_blueprint(water_requirement_bp, url_prefix="/api")
+    app.register_blueprint(weather_bp, url_prefix="/api")
+    app.register_blueprint(scarcity_bp, url_prefix="/api")
+    app.register_blueprint(crop_efficiency_bp, url_prefix="/api")
+    app.register_blueprint(soil_analysis_bp, url_prefix="/api")
+    app.register_blueprint(voice_assistant_bp, url_prefix="/api")
+    app.register_blueprint(disaster_preparedness_bp, url_prefix="/api")
 
     @app.cli.command("init-db")
     def init_db():

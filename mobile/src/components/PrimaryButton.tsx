@@ -7,6 +7,7 @@ interface PrimaryButtonProps {
   loading?: boolean;
   disabled?: boolean;
   logout?: boolean;
+  testID?: string;
 }
 
 export function PrimaryButton({
@@ -15,6 +16,7 @@ export function PrimaryButton({
   loading = false,
   disabled = false,
   logout = false,
+  testID,
 }: PrimaryButtonProps) {
   const unavailable = disabled || loading;
   return (
@@ -23,6 +25,7 @@ export function PrimaryButton({
       accessibilityState={{ disabled: unavailable, busy: loading }}
       disabled={unavailable}
       onPress={onPress}
+      testID={testID}
       style={({ pressed }) => [
         styles.button,
         unavailable ? styles.disabled : null,

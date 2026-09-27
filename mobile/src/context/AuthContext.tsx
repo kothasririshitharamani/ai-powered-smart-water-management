@@ -35,6 +35,28 @@ import {
   getWaterUsage,
   updateWaterBudget,
 } from "../services/water";
+import {
+  getWeatherAlerts,
+  markWeatherAlertRead,
+} from "../services/weather";
+import {
+  calculateWaterRequirement,
+  getWaterRequirement,
+} from "../services/waterRequirement";
+import {
+  addFarmerCrop,
+  deleteFarmerCrop,
+  getScarcityAllocation,
+  saveScarcityAllocation,
+} from "../services/scarcityAllocation";
+import type {
+  AddFarmerCropPayload,
+  FarmerCrop,
+  SaveAllocationPayload,
+  ScarcityAllocationSummary,
+  WeatherAlert,
+  WaterRequirementEstimate,
+} from "../types/auth";
 
 type AuthStatus = "loading" | "unauthenticated" | "authenticated";
 
@@ -46,6 +68,17 @@ interface AuthContextValue {
   waterUsage: WaterUsageEntry[];
   waterLoading: boolean;
   waterError: string | null;
+  weatherAlerts: WeatherAlert[];
+  unreadAlertsCount: number;
+  weatherAlertsLoading: boolean;
+  weatherAlertsError: string | null;
+  waterEstimate: WaterRequirementEstimate | null;
+  waterEstimateMissingFields: string[];
+  waterEstimateLoading: boolean;
+  waterEstimateError: string | null;
+  scarcitySummary: ScarcityAllocationSummary | null;
+  scarcityLoading: boolean;
+  scarcityError: string | null;
   startupMessage: string | null;
   profileSavedMessage: string | null;
   login(credentials: AuthCredentials): Promise<void>;
@@ -53,6 +86,14 @@ interface AuthContextValue {
   refreshProfile(): Promise<FarmerProfile>;
   saveProfile(details: FarmerProfileUpdate): Promise<FarmerProfile>;
   refreshWater(): Promise<void>;
+  refreshWeatherAlerts(): Promise<void>;
+  markAlertRead(alertId: string): Promise<void>;
+  refreshWaterEstimate(): Promise<void>;
+  calculateNewWaterEstimate(): Promise<void>;
+  refreshScarcityAllocation(): Promise<void>;
+  saveAllocation(payload: SaveAllocationPayload): Promise<void>;
+  addNewCrop(payload: AddFarmerCropPayload): Promise<FarmerCrop>;
+  removeCrop(cropId: string): Promise<void>;
   saveWaterBudget(amount: number): Promise<void>;
   recordWaterUsage(amount: number, notes: string): Promise<void>;
   clearProfileSavedMessage(): void;
@@ -80,6 +121,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [waterUsage, setWaterUsage] = useState<WaterUsageEntry[]>([]);
   const [waterLoading, setWaterLoading] = useState(false);
   const [waterError, setWaterError] = useState<string | null>(null);
+  const [weatherAlerts, setWeatherAlerts] = useState<WeatherAlert[]>([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [weatherAlertsLoading, setWeatherAlertsLoading] = useState(false);
+  const [weatherAlertsError, setWeatherAlertsError] = useState<string | null>(
+    null,
+  );
+  const [waterEstimate, setWaterEstimate] =
+    useState<WaterRequirementEstimate | null>(null);
+  const [waterEstimateMissingFields, setWaterEstimateMissingFields] = useState<
+    string[]
+  >([]);
+  const [waterEstimateLoading, setWaterEstimateLoading] = useState(false);
+  const [waterEstimateError, setWaterEstimateError] = useState<string | null>(
+    null,
+  );
+  const [scarcitySummary, setScarcitySummary] =
+    useState<ScarcityAllocationSummary | null>(null);
+  const [scarcityLoading, setScarcityLoading] = useState(false);
+  const [scarcityError, setScarcityError] = useState<string | null>(null);
 
   const profile = user?.farmer_profile ?? null;
 
@@ -191,12 +251,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setUser(updatedUser);
     setProfileSavedMessage(translate("profileSaveSuccess"));
     await refreshWater();
+    void refreshWaterEstimate().catch(() => undefined);
     return updatedProfile;
   }
 
   async function saveWaterBudget(amount: number) {
     await updateWaterBudget(amount);
     await refreshWater();
+    void refreshScarcityAllocation().catch(() => undefined);
     setUser((currentUser) => {
       if (!currentUser) return currentUser;
       const updatedUser = {
@@ -216,18 +278,160 @@ export function AuthProvider({ children }: PropsWithChildren) {
   async function recordWaterUsage(amount: number, notes: string) {
     await createWaterUsage(amount, notes);
     await refreshWater();
+    void refreshScarcityAllocation().catch(() => undefined);
   }
+
+  const refreshWeatherAlerts = useCallback(async () => {
+    setWeatherAlertsLoading(true);
+    setWeatherAlertsError(null);
+    try {
+      const data = await getWeatherAlerts();
+      setWeatherAlerts(data.alerts);
+      setUnreadAlertsCount(data.unread_count);
+    } catch (error) {
+      setWeatherAlertsError(errorMessage(error));
+      throw error;
+    } finally {
+      setWeatherAlertsLoading(false);
+    }
+  }, []);
+
+  const markAlertRead = useCallback(async (alertId: string) => {
+    const updated = await markWeatherAlertRead(alertId);
+    setWeatherAlerts((current) =>
+      current.map((item) => (item.id === alertId ? updated : item)),
+    );
+    setUnreadAlertsCount((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const refreshWaterEstimate = useCallback(async () => {
+    setWaterEstimateLoading(true);
+    setWaterEstimateError(null);
+    try {
+      const data = await getWaterRequirement();
+      setWaterEstimate(data.estimate);
+      setWaterEstimateMissingFields(data.missing_fields || []);
+    } catch (error) {
+      setWaterEstimateError(errorMessage(error));
+      throw error;
+    } finally {
+      setWaterEstimateLoading(false);
+    }
+  }, []);
+
+  const calculateNewWaterEstimate = useCallback(async () => {
+    setWaterEstimateLoading(true);
+    setWaterEstimateError(null);
+    try {
+      const data = await calculateWaterRequirement();
+      setWaterEstimate(data.estimate);
+      setWaterEstimateMissingFields(data.missing_fields || []);
+    } catch (error) {
+      setWaterEstimateError(errorMessage(error));
+      throw error;
+    } finally {
+      setWaterEstimateLoading(false);
+    }
+  }, []);
+
+  const refreshScarcityAllocation = useCallback(async () => {
+    setScarcityLoading(true);
+    setScarcityError(null);
+    try {
+      const data = await getScarcityAllocation();
+      setScarcitySummary(data);
+    } catch (error) {
+      setScarcityError(errorMessage(error));
+      throw error;
+    } finally {
+      setScarcityLoading(false);
+    }
+  }, []);
+
+  const saveAllocation = useCallback(
+    async (payload: SaveAllocationPayload) => {
+      setScarcityLoading(true);
+      setScarcityError(null);
+      try {
+        const res = await saveScarcityAllocation(payload);
+        setScarcitySummary(res.summary);
+      } catch (error) {
+        setScarcityError(errorMessage(error));
+        throw error;
+      } finally {
+        setScarcityLoading(false);
+      }
+    },
+    [],
+  );
+
+  const addNewCrop = useCallback(
+    async (payload: AddFarmerCropPayload) => {
+      setScarcityLoading(true);
+      setScarcityError(null);
+      try {
+        const crop = await addFarmerCrop(payload);
+        const data = await getScarcityAllocation();
+        setScarcitySummary(data);
+        return crop;
+      } catch (error) {
+        setScarcityError(errorMessage(error));
+        throw error;
+      } finally {
+        setScarcityLoading(false);
+      }
+    },
+    [],
+  );
+
+  const removeCrop = useCallback(
+    async (cropId: string) => {
+      setScarcityLoading(true);
+      setScarcityError(null);
+      try {
+        await deleteFarmerCrop(cropId);
+        const data = await getScarcityAllocation();
+        setScarcitySummary(data);
+      } catch (error) {
+        setScarcityError(errorMessage(error));
+        throw error;
+      } finally {
+        setScarcityLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (status === "authenticated") {
       void refreshWater().catch(() => undefined);
+      void refreshWeatherAlerts().catch(() => undefined);
+      void refreshWaterEstimate().catch(() => undefined);
+      void refreshScarcityAllocation().catch(() => undefined);
     } else {
       setWaterBudget(null);
       setWaterUsage([]);
       setWaterError(null);
       setWaterLoading(false);
+      setWeatherAlerts([]);
+      setUnreadAlertsCount(0);
+      setWeatherAlertsLoading(false);
+      setWeatherAlertsError(null);
+      setWaterEstimate(null);
+      setWaterEstimateMissingFields([]);
+      setWaterEstimateLoading(false);
+      setWaterEstimateError(null);
+      setScarcitySummary(null);
+      setScarcityLoading(false);
+      setScarcityError(null);
     }
-  }, [status, refreshWater]);
+  }, [
+    status,
+    refreshWater,
+    refreshWeatherAlerts,
+    refreshWaterEstimate,
+    refreshScarcityAllocation,
+  ]);
 
   async function logout() {
     await clearAuthSession();
@@ -247,6 +451,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         waterUsage,
         waterLoading,
         waterError,
+        weatherAlerts,
+        unreadAlertsCount,
+        weatherAlertsLoading,
+        weatherAlertsError,
+        waterEstimate,
+        waterEstimateMissingFields,
+        waterEstimateLoading,
+        waterEstimateError,
+        scarcitySummary,
+        scarcityLoading,
+        scarcityError,
         startupMessage,
         profileSavedMessage,
         login,
@@ -254,6 +469,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         refreshProfile,
         saveProfile,
         refreshWater,
+        refreshWeatherAlerts,
+        markAlertRead,
+        refreshWaterEstimate,
+        calculateNewWaterEstimate,
+        refreshScarcityAllocation,
+        saveAllocation,
+        addNewCrop,
+        removeCrop,
         saveWaterBudget,
         recordWaterUsage,
         logout,

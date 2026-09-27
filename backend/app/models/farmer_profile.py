@@ -38,6 +38,26 @@ class FarmerProfile(db.Model):
     water_usages = db.relationship("WaterUsage", back_populates="farmer_profile")
     weather_alerts = db.relationship("WeatherAlert", back_populates="farmer_profile")
     water_loss_reports = db.relationship("WaterLossReport", back_populates="farmer_profile")
+    water_requirement_estimates = db.relationship(
+        "WaterRequirementEstimate",
+        back_populates="farmer_profile",
+        cascade="all, delete-orphan",
+    )
+    crops = db.relationship(
+        "FarmerCrop",
+        back_populates="farmer_profile",
+        cascade="all, delete-orphan",
+    )
+    water_allocation_plans = db.relationship(
+        "WaterAllocationPlan",
+        back_populates="farmer_profile",
+        cascade="all, delete-orphan",
+    )
+    soil_analysis_reports = db.relationship(
+        "SoilAnalysisReport",
+        back_populates="farmer_profile",
+        cascade="all, delete-orphan",
+    )
 
     def to_dict(self):
         return {

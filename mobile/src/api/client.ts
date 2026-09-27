@@ -73,7 +73,15 @@ export async function apiRequest<T>(
               : response.status >= 500
                 ? "serverError"
                 : "requestFailed";
-    throw new ApiError(translate(messageKey), response.status);
+    const serverMessage =
+      body &&
+      typeof body === "object" &&
+      "message" in body &&
+      typeof (body as { message?: unknown }).message === "string" &&
+      (body as { message: string }).message.trim().length > 0
+        ? (body as { message: string }).message
+        : null;
+    throw new ApiError(serverMessage || translate(messageKey), response.status);
   }
 
   return body as T;

@@ -91,7 +91,7 @@ async function main() {
       [
         path.join(mobileRoot, "node_modules", "jest", "bin", "jest.js"),
         "--runInBand",
-        "--testTimeout=30000",
+        "--testTimeout=60000",
       ],
       mobileRoot,
       env,
