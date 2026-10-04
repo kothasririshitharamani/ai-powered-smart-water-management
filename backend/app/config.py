@@ -1,4 +1,10 @@
 import os
+from dotenv import load_dotenv
+
+# Search and load .env from backend/ or repository root
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"))
+load_dotenv()
 
 
 class Config:
@@ -25,4 +31,4 @@ class Config:
         if origin.strip()
     ]
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")

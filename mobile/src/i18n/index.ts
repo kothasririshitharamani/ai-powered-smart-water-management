@@ -324,6 +324,17 @@ export const messages = {
   disasterLoadingText: "విపత్తు సంసిద్ధతా సమాచారాన్ని తెస్తున్నాము...",
   disasterErrorText: "సంసిద్ధతా సమాచారాన్ని పొందలేకపోయాము.",
   refresh: "తాజాకరించండి",
+  drawerMenu: "మెనూ",
+  drawerTitle: "రైతు సేవలు",
+  drawerProfile: "ప్రొఫైల్",
+  drawerSignOut: "సైన్ అవుట్",
+  signOutConfirmTitle: "సైన్ అవుట్ నిర్ధారణ",
+  signOutConfirmMessage:
+    "మీరు ఖచ్చితంగా మీ ఖాతా నుండి సైన్ అవుట్ చేయాలనుకుంటున్నారా?",
+  confirmSignOut: "సైన్ అవుట్ చేయండి",
+  cancel: "రద్దు చేయండి",
+  close: "మూసివేయండి",
+  farmerAccount: "రైతు ఖాతా",
 } as const;
 
 export type MessageKey = keyof typeof messages;

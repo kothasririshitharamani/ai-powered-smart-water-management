@@ -40,6 +40,7 @@ jest.mock("lucide-react-native", () => {
     LockKeyhole: MockIcon,
     LogOut: MockIcon,
     MapPin: MockIcon,
+    Menu: MockIcon,
     Mic: MockIcon,
     MicOff: MockIcon,
     Phone: MockIcon,
@@ -57,6 +58,7 @@ jest.mock("lucide-react-native", () => {
     Volume2: MockIcon,
     Waves: MockIcon,
     Wind: MockIcon,
+    X: MockIcon,
   };
 });
 
@@ -775,6 +777,87 @@ describe("Telugu farmer authentication and profile flow", () => {
       expect(screen.getByText(editedFarmerName)).toBeTruthy(),
     );
 
+    // 1. Verify Home is vertically scrollable and contains all cards
+    expect(screen.getByTestId("authenticated-home-scroll")).toBeTruthy();
+    expect(screen.getByTestId("water-requirement-button")).toBeTruthy();
+    expect(screen.getByTestId("weather-alerts-button")).toBeTruthy();
+    expect(screen.getByTestId("scarcity-allocation-button")).toBeTruthy();
+    expect(screen.getByTestId("crop-efficiency-button")).toBeTruthy();
+    expect(screen.getByTestId("soil-analysis-button")).toBeTruthy();
+    expect(screen.getByTestId("voice-assistant-button")).toBeTruthy();
+    expect(screen.getByTestId("disaster-preparedness-button")).toBeTruthy();
+
+    // 2. Test Side Navigation Drawer Opening and Real Farmer Context
+    expect(screen.getByTestId("drawer-menu-button")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("drawer-menu-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("side-drawer-modal")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("drawer-farmer-info")).toBeTruthy();
+    expect(screen.getAllByText(editedFarmerName).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("drawer-profile-button")).toBeTruthy();
+    expect(screen.getByTestId("drawer-water-management-button")).toBeTruthy();
+    expect(screen.getByTestId("drawer-logout-button")).toBeTruthy();
+
+    // 3. Test Drawer Navigation to Profile
+    await fireEvent.press(screen.getByTestId("drawer-profile-button"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("భూమి విస్తీర్ణం")).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByText("వెనక్కి"));
+    await waitFor(() =>
+      expect(screen.getByText(editedFarmerName)).toBeTruthy(),
+    );
+
+    // 4. Test Drawer Sign Out with Confirmation Dialog (Cancel then Confirm)
+    await fireEvent.press(screen.getByTestId("drawer-menu-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("drawer-logout-button")).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId("drawer-logout-button"));
+
+    // Confirmation dialog should be visible with Telugu message
+    await waitFor(() =>
+      expect(screen.getByTestId("sign-out-confirm-modal")).toBeTruthy(),
+    );
+    expect(screen.getByText("సైన్ అవుట్ నిర్ధారణ")).toBeTruthy();
+    expect(
+      screen.getByText("మీరు ఖచ్చితంగా మీ ఖాతా నుండి సైన్ అవుట్ చేయాలనుకుంటున్నారా?"),
+    ).toBeTruthy();
+
+    // Test Cancel button keeps farmer logged in
+    await fireEvent.press(screen.getByTestId("cancel-sign-out-button"));
+    expect(screen.getByText(editedFarmerName)).toBeTruthy();
+
+    // Test Confirm button logs farmer out
+    await fireEvent.press(screen.getByTestId("drawer-menu-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("drawer-logout-button")).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId("drawer-logout-button"));
+    await waitFor(() =>
+      expect(screen.getByTestId("confirm-sign-out-button")).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId("confirm-sign-out-button"));
+
+    // Verify token cleared and returned to Login
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "లాగిన్ చేయండి" }),
+      ).toBeTruthy(),
+    );
+    expect(
+      await SecureStore.getItemAsync("smart-water-access-token"),
+    ).toBeNull();
+    expect(await SecureStore.getItemAsync("smart-water-auth-user")).toBeNull();
+
+    // Re-login to continue remaining token expiration tests
+    await loginWith(farmerFixture.password);
+    await waitFor(() =>
+      expect(screen.getByText(editedFarmerName)).toBeTruthy(),
+    );
+
     jest.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 403,
@@ -800,6 +883,10 @@ describe("Telugu farmer authentication and profile flow", () => {
       expect(screen.getByText(editedFarmerName)).toBeTruthy(),
     );
     await fireEvent.press(screen.getByRole("button", { name: "లాగ్ అవుట్" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("confirm-sign-out-button")).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId("confirm-sign-out-button"));
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "లాగిన్ చేయండి" }),

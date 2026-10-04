@@ -1,11 +1,30 @@
 import { useState } from "react";
-import { Calculator, Camera, CloudRain, Droplets, Gauge, Mic, ShieldAlert, Sprout, Waves } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Calculator,
+  Camera,
+  CloudRain,
+  Droplets,
+  Gauge,
+  Menu,
+  Mic,
+  ShieldAlert,
+  Sprout,
+  Waves,
+} from "lucide-react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 
 import { PrimaryButton } from "../components/PrimaryButton";
+import { SideDrawer } from "../components/SideDrawer";
+import { SignOutConfirmModal } from "../components/SignOutConfirmModal";
 import { useAuth } from "../context/AuthContext";
 import { translate } from "../i18n";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -30,8 +49,11 @@ export function AuthenticatedScreen() {
     scarcitySummary,
     scarcityLoading,
   } = useAuth();
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [signOutModalOpen, setSignOutModalOpen] = useState(false);
 
   async function signOut() {
     setBusy(true);
@@ -45,9 +67,46 @@ export function AuthenticatedScreen() {
     }
   }
 
+  const handleConfirmSignOut = async () => {
+    setSignOutModalOpen(false);
+    await signOut();
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+      {/* Top Header Bar with Menu Button ☰ */}
+      <View style={styles.topHeader}>
+        <Pressable
+          accessibilityLabel={translate("drawerMenu")}
+          accessibilityRole="button"
+          onPress={() => setDrawerOpen(true)}
+          style={styles.menuButton}
+          testID="drawer-menu-button"
+        >
+          <Menu color="#15803d" size={26} />
+        </Pressable>
+
+        <View style={styles.headerTitleGroup}>
+          <Text style={styles.topHeaderTitle}>{translate("appName")}</Text>
+        </View>
+
+        <Pressable
+          accessibilityLabel={translate("voiceAssistant")}
+          accessibilityRole="button"
+          onPress={() => navigation.navigate("VoiceAssistant")}
+          style={styles.headerVoiceButton}
+        >
+          <Mic color="#15803d" size={22} />
+        </Pressable>
+      </View>
+
+      {/* Vertically Scrollable Content Container */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        testID="authenticated-home-scroll"
+      >
         <View style={styles.iconCircle}>
           <Sprout color="#176544" size={38} strokeWidth={2} />
         </View>
@@ -60,6 +119,8 @@ export function AuthenticatedScreen() {
           </Text>
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {/* Feature 1: Water Management */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("WaterManagement")}
@@ -91,6 +152,8 @@ export function AuthenticatedScreen() {
             )}
           </View>
         </Pressable>
+
+        {/* Feature 2: Water Requirement Estimation */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("WaterRequirement")}
@@ -120,6 +183,8 @@ export function AuthenticatedScreen() {
             )}
           </View>
         </Pressable>
+
+        {/* Feature 3: Weather Alerts */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("WeatherAlerts")}
@@ -129,7 +194,7 @@ export function AuthenticatedScreen() {
           <View style={styles.weatherIcon}>
             <CloudRain color="#1b5e76" size={22} />
           </View>
-          <View style={styles.weatherSummaryCopy}>
+          <View style={styles.waterSummaryCopy}>
             <View style={styles.weatherHeaderRow}>
               <Text style={styles.weatherTitle}>
                 {translate("weatherAlerts")}
@@ -162,6 +227,8 @@ export function AuthenticatedScreen() {
             )}
           </View>
         </Pressable>
+
+        {/* Feature 4: Scarcity Allocation */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("ScarcityAllocation")}
@@ -198,6 +265,8 @@ export function AuthenticatedScreen() {
             )}
           </View>
         </Pressable>
+
+        {/* Feature 5: Crop Water Efficiency Comparison */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("CropEfficiency")}
@@ -216,6 +285,8 @@ export function AuthenticatedScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {/* Feature 6: AI Soil Analysis */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("SoilAnalysis")}
@@ -234,6 +305,8 @@ export function AuthenticatedScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {/* Feature 7: Telugu Voice Assistant */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("VoiceAssistant")}
@@ -252,6 +325,8 @@ export function AuthenticatedScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {/* Feature 8: Disaster Preparedness */}
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate("DisasterPreparedness")}
@@ -270,6 +345,8 @@ export function AuthenticatedScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {/* Action Buttons */}
         <View style={styles.buttonWrap}>
           <PrimaryButton
             onPress={() => {
@@ -281,11 +358,34 @@ export function AuthenticatedScreen() {
           <PrimaryButton
             loading={busy}
             logout
-            onPress={() => void signOut()}
+            onPress={() => setSignOutModalOpen(true)}
             title={translate("logout")}
           />
         </View>
-      </View>
+      </ScrollView>
+
+      {/* Side Navigation Drawer */}
+      <SideDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        farmerName={user?.farmer_profile.name}
+        farmerMobile={user?.mobile}
+        farmerVillage={user?.farmer_profile.village}
+        farmerDistrict={user?.farmer_profile.district}
+        onNavigate={(route) => {
+          clearProfileSavedMessage();
+          navigation.navigate(route);
+        }}
+        onSignOutPress={() => setSignOutModalOpen(true)}
+      />
+
+      {/* Sign Out Confirmation Modal */}
+      <SignOutConfirmModal
+        isOpen={signOutModalOpen}
+        onCancel={() => setSignOutModalOpen(false)}
+        onConfirm={handleConfirmSignOut}
+        loading={busy}
+      />
     </SafeAreaView>
   );
 }
@@ -295,36 +395,69 @@ const styles = StyleSheet.create({
     backgroundColor: "#edf5ee",
     flex: 1,
   },
-  content: {
+  topHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  menuButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f3f4f6",
+  },
+  headerTitleGroup: {
     flex: 1,
-    justifyContent: "center",
-    padding: 26,
+    alignItems: "center",
+  },
+  topHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#15543d",
+  },
+  headerVoiceButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0fdf4",
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 48,
   },
   iconCircle: {
     alignItems: "center",
     backgroundColor: "#d9ecdf",
     borderRadius: 32,
-    height: 82,
+    height: 64,
     justifyContent: "center",
-    width: 82,
+    width: 64,
+    marginTop: 8,
   },
   welcome: {
     color: "#526b61",
-    fontSize: 17,
-    marginTop: 23,
+    fontSize: 15,
+    marginTop: 14,
   },
   name: {
     color: "#153d33",
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "700",
-    marginTop: 8,
+    marginTop: 6,
     textAlign: "center",
   },
   mobile: {
     color: "#526b61",
-    fontSize: 18,
-    marginTop: 8,
+    fontSize: 16,
+    marginTop: 4,
   },
   error: {
     color: "#922e2a",
@@ -347,7 +480,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
-    marginTop: 25,
+    marginTop: 20,
     minHeight: 78,
     padding: 13,
   },
@@ -364,47 +497,24 @@ const styles = StyleSheet.create({
   },
   waterTitle: {
     color: "#153d33",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
   },
   waterDetail: {
     color: "#526b61",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 3,
+    fontSize: 15,
+    marginTop: 4,
   },
   waterError: {
     color: "#922e2a",
     fontSize: 14,
-    lineHeight: 20,
-    marginTop: 3,
-  },
-  requirementSummary: {
-    alignItems: "center",
-    alignSelf: "stretch",
-    backgroundColor: "#e2efe6",
-    borderColor: "#c6e1cf",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 12,
-    minHeight: 78,
-    padding: 13,
-  },
-  requirementIcon: {
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    height: 46,
-    justifyContent: "center",
-    width: 46,
+    marginTop: 4,
   },
   weatherSummary: {
     alignItems: "center",
     alignSelf: "stretch",
-    backgroundColor: "#e8f1f5",
-    borderColor: "#cce0ea",
+    backgroundColor: "#e4f0f6",
+    borderColor: "#cfe0e8",
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
@@ -421,50 +531,66 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 46,
   },
-  weatherSummaryCopy: {
-    flex: 1,
-  },
   weatherHeaderRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
+    justifyContent: "space-between",
   },
   weatherTitle: {
-    color: "#153d33",
-    fontSize: 17,
+    color: "#144558",
+    fontSize: 18,
     fontWeight: "700",
   },
   weatherDetail: {
-    color: "#526b61",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 3,
+    color: "#466a79",
+    fontSize: 15,
+    marginTop: 4,
   },
   weatherError: {
     color: "#922e2a",
     fontSize: 14,
-    lineHeight: 20,
-    marginTop: 3,
+    marginTop: 4,
   },
   homeUnreadBadge: {
     alignItems: "center",
-    backgroundColor: "#922e2a",
+    backgroundColor: "#b91c1c",
     borderRadius: 10,
+    height: 20,
     justifyContent: "center",
     minWidth: 20,
     paddingHorizontal: 6,
-    paddingVertical: 1,
   },
   homeUnreadBadgeText: {
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
+  },
+  requirementSummary: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    backgroundColor: "#e3f0e9",
+    borderColor: "#cde3d6",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+    minHeight: 78,
+    padding: 13,
+  },
+  requirementIcon: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    height: 46,
+    justifyContent: "center",
+    width: 46,
   },
   scarcitySummary: {
     alignItems: "center",
     alignSelf: "stretch",
-    backgroundColor: "#fdf8ee",
-    borderColor: "#f5e6c4",
+    backgroundColor: "#fef8e7",
+    borderColor: "#fae7b7",
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
@@ -484,8 +610,8 @@ const styles = StyleSheet.create({
   efficiencySummary: {
     alignItems: "center",
     alignSelf: "stretch",
-    backgroundColor: "#eaf5ee",
-    borderColor: "#cce8d4",
+    backgroundColor: "#eef6f1",
+    borderColor: "#cde3d6",
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
@@ -566,7 +692,7 @@ const styles = StyleSheet.create({
     width: 46,
   },
   buttonWrap: {
-    marginTop: 34,
+    marginTop: 24,
     maxWidth: 360,
     width: "100%",
   },

@@ -48,7 +48,15 @@ def analyze_soil():
             200,
         )
     except SoilAnalysisError as err:
-        return jsonify(message=err.message), err.status
+        return (
+            jsonify(
+                error=err.message,
+                message=err.message,
+                code=getattr(err, "code", "ERROR"),
+                detail=getattr(err, "detail", None),
+            ),
+            err.status,
+        )
 
 
 @soil_analysis_bp.get("/soil-analysis/history")

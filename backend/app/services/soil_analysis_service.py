@@ -30,20 +30,22 @@ TELUGU_DISCLAIMER = (
 
 
 class SoilAnalysisError(Exception):
-    def __init__(self, message, status=400):
+    def __init__(self, message, status=400, code="SOIL_ANALYSIS_ERROR", detail=None):
         super().__init__(message)
         self.message = message
         self.status = status
+        self.code = code
+        self.detail = detail
 
 
 class SoilAnalysisInputError(SoilAnalysisError):
-    def __init__(self, message, status=400):
-        super().__init__(message, status=status)
+    def __init__(self, message, status=400, code="INPUT_ERROR", detail=None):
+        super().__init__(message, status=status, code=code, detail=detail)
 
 
 class SoilAnalysisUnavailableError(SoilAnalysisError):
-    def __init__(self, message, status=503):
-        super().__init__(message, status=status)
+    def __init__(self, message, status=503, code="SERVICE_UNAVAILABLE", detail=None):
+        super().__init__(message, status=status, code=code, detail=detail)
 
 
 def authenticated_profile():
@@ -176,27 +178,38 @@ def parse_and_validate_ai_response(raw_text):
     }
 
 
-def call_gemini_api(image_bytes, mime_type, api_key, model_name="gemini-2.5-flash"):
+def call_gemini_api(image_bytes, mime_type, api_key, model_name="gemini-1.5-flash"):
     try:
         import google.generativeai as genai
     except ImportError:
-        raise SoilAnalysisUnavailableError("AI సేవల లైబ్రరీ అందుబాటులో లేదు.", 503) from None
+        logger.error("[AI Soil Analysis] google-generativeai package is not installed.")
+        raise SoilAnalysisUnavailableError(
+            "AI సేవల లైబ్రరీ అందుబాటులో లేదు.",
+            503,
+            code="DEPENDENCY_MISSING",
+            detail="google-generativeai is not installed",
+        ) from None
 
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name)
         prompt = build_analysis_prompt()
 
-        response = model.generate_content([
-            {"mime_type": mime_type, "data": image_bytes},
-            prompt,
-        ])
+        # Open image with PIL for standard GenerativeModel image multimodal input
+        pil_image = Image.open(io.BytesIO(image_bytes))
+
+        response = model.generate_content([pil_image, prompt])
         return response.text
     except Exception as exc:
-        logger.error("Gemini API call failed: %s", type(exc).__name__)
+        err_type = type(exc).__name__
+        err_msg = str(exc)
+        logger.error("[Gemini API] Generation call failed: %s (%s)", err_type, err_msg)
+        print(f"[Gemini API Error] {err_type}: {err_msg}", flush=True)
         raise SoilAnalysisUnavailableError(
             "AI విశ్లేషణను పూర్తి చేయలేకపోయాము. దయచేసి స్పష్టమైన ఫోటోతో కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.",
             502,
+            code="GEMINI_API_FAILED",
+            detail=f"{err_type}: {err_msg}",
         ) from None
 
 
@@ -208,13 +221,22 @@ def process_soil_image_analysis(profile, raw_base64, mime_type=None, *, gemini_c
     image_bytes, resolved_mime = validate_and_extract_image_bytes(raw_base64, mime_type)
 
     api_key = current_app.config.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", "")
-    model_name = current_app.config.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name = current_app.config.get("GEMINI_MODEL", "gemini-1.5-flash")
 
     # If no caller override and no API key configured, fail honestly with clear Telugu message
+    # and explain exactly what configuration is missing in the developer/terminal output.
     if gemini_caller is None and (not api_key or not str(api_key).strip()):
+        missing_msg = (
+            "[AI Soil Analysis] GEMINI_API_KEY is not configured in backend/.env or system environment. "
+            "Please configure GEMINI_API_KEY=<your_api_key> in backend/.env to enable live Gemini AI soil analysis."
+        )
+        logger.warning(missing_msg)
+        print(missing_msg, flush=True)
         raise SoilAnalysisUnavailableError(
             "AI నేల విశ్లేషణ సేవ ప్రస్తుతం కాన్ఫిగర్ చేయబడలేదు. దయచేసి కాసేపటి తర్వాత ప్రయత్నించండి.",
-            503,
+            status=503,
+            code="CONFIG_MISSING",
+            detail="GEMINI_API_KEY is not configured in backend/.env",
         )
 
     try:
@@ -225,10 +247,15 @@ def process_soil_image_analysis(profile, raw_base64, mime_type=None, *, gemini_c
     except SoilAnalysisUnavailableError:
         raise
     except Exception as exc:
-        logger.error("Gemini invocation failed: %s", type(exc).__name__)
+        err_type = type(exc).__name__
+        err_msg = str(exc)
+        logger.error("Gemini invocation failed: %s (%s)", err_type, err_msg)
+        print(f"[Gemini Error] {err_type}: {err_msg}", flush=True)
         raise SoilAnalysisUnavailableError(
             "AI విశ్లేషణను పూర్తి చేయలేకపోయాము. దయచేసి స్పష్టమైన ఫోటోతో కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.",
             502,
+            code="INVOCATION_FAILED",
+            detail=f"{err_type}: {err_msg}",
         ) from None
 
     validated_result = parse_and_validate_ai_response(raw_ai_text)
